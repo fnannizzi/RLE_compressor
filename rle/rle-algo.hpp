@@ -173,12 +173,34 @@ void RLE<T>::Decompress(const T* input, int inSize, int outSize)
 	delete m_Data;
 	m_Size = 0;
 	m_Data = new T[outSize];
-	const T* temp = input;
-	int runSize = *temp;
+	const T* runStart = input;
+	const T* runTrack = (input + 1);
+	int runSize;
+	bool positiveRun;
 
-	while (temp != (input + inSize)){
-
-		++temp;
+	while (m_Size < outSize){
+		if ((*runStart) > 0){
+			positiveRun = true;
+			runSize = *runStart;
+		}
+		else {
+			positiveRun = false;
+			runSize = (-1)*(*runStart);
+		}
+		for (int i = 0; i < runSize; i++){
+			m_Data[m_Size] = *runTrack;
+			m_Size++;
+			if (!positiveRun){
+				++runTrack;
+			}
+			//std::cout << "PRINT " << m_Data[m_Size - 1] << std::endl;
+		}
+		if (positiveRun){
+			++runTrack;
+		}
+		runStart = runTrack;
+		++runTrack;
+		//std::cout << "RUNTRACK " << (*runStart) << " " << (*runTrack) << std::endl;
 	}
 
 }
