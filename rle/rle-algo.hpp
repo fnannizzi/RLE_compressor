@@ -17,8 +17,9 @@ struct RLE
 
 	~RLE()
 	{
-		delete m_Data;
+		delete[] m_Data;
 	}
+
 	
 	// Compresses input data and stores it in m_Data
 	void Compress(const T* input, int inSize);
@@ -38,6 +39,15 @@ struct RLE
 
 	// Shenanigans to get the maximum run size
 	int MaxRunSize();
+
+	// Tired of writing m_Size++ over and over
+	void WritePositiveData(int runSize, char value)
+	{
+		m_Data[m_Size] = (T)runSize;
+		m_Size++;
+		m_Data[m_Size] = (T)(value);
+		m_Size++;
+	}
 };
 
 template <typename T>
@@ -50,61 +60,54 @@ void RLE<T>::Compress(const T* input, int inSize)
 	const T* temp = input;
 	int runSize = 1;
 	bool positiveRun = false;
-	if ((*temp) == (*(temp + 1))){
+
+	if ((*temp) == (*(temp + 1)))
+	{
 		positiveRun = true;
 	}
-	
 
-	//std::cout << "Input size = " << inSize << std::endl;
+	for (int character = 1; character < inSize; character++)
+	{
+		if (positiveRun)
+		{ // in a positive run
+			if ((*temp) == (*(temp + 1)))
+			{ // continuing the positive run
 
-	for (int character = 1; character < inSize; character++){
-		if (positiveRun){ // in a positive run
-			if ((*temp) == (*(temp + 1))){ // continuing the positive run
-				//std::cout << "MATCH " << (*temp) << " " << (*(temp + 1)) << std::endl;
-
-				if (runSize == maxRunSize){ // need to record run before exceeding maxRunSize
-					//std::cout << "Reached maxRunSize = " << maxRunSize << std::endl;
-					m_Data[m_Size] = (T)runSize;
-					m_Size++;
-					m_Data[m_Size] = (T)(*temp);
-					m_Size++;
+				if (runSize == maxRunSize)
+				{ // need to record run before exceeding maxRunSize
+					WritePositiveData(runSize, (*temp));
 					runSize = 0;
 				}
 				runSize++;
 
-				if (character == (inSize - 1)){ // reached the end of the input and need to write
-					//std::cout << "Reached end of input on a positive run" << std::endl;
-					m_Data[m_Size] = (T)runSize;
-					m_Size++;
-					m_Data[m_Size] = (T)(*temp);
-					m_Size++;
+				if (character == (inSize - 1))
+				{ // reached the end of the input and need to write
+					WritePositiveData(runSize, (*temp));
 					runSize = 0;
 				}
 			}
-			else { // positive run is ending
-				//std::cout << "NO MATCH " << (*temp) << " " << (*(temp + 1)) << std::endl;
-				m_Data[m_Size] = (T)runSize;
-				m_Size++;
-				m_Data[m_Size] = (T)(*temp);
-				m_Size++;
-				//std::cout << "PRINT " << m_Data[m_Size - 2] << " " << m_Data[m_Size - 1] << std::endl;
+			// positive run is ending
+			else 
+			{
+				WritePositiveData(runSize, (*temp));
 				runSize = 1;
-				positiveRun = false;
 
-				if (character == (inSize - 1)){ // reached the end of the input and need to write
-					//std::cout << "Reached end of input ending a positive run" << std::endl;
-					m_Data[m_Size] = (T)runSize;
-					m_Size++;
-					m_Data[m_Size] = (T)(*(temp + 1));
-					m_Size++;
+				// another positive run is beginning
+				if ((*(temp + 1)) != (*(temp + 2)))
+				{ 
+					positiveRun = false;
+				}
+
+				// reached the end of the input and need to write
+				if (character == (inSize - 1))
+				{ 
+					WritePositiveData(runSize, (*(temp + 1)));
 					runSize = 0;
 				}
 			}
 		}
 		else { // in a negative run
 			if ((*temp) == (*(temp + 1))){ // negative run is ending
-				//std::cout << "MATCH " << (*temp) << " " << (*(temp + 1)) << std::endl;
-				//std::cout << "BACKTRACKING because negative run is ending" << std::endl;
 				runSize--;
 				m_Data[m_Size] = (T)((-1)*runSize);
 				m_Size++;
@@ -117,33 +120,36 @@ void RLE<T>::Compress(const T* input, int inSize)
 				runSize = 2;
 
 				if (character == (inSize - 1)){ // reached the end of the input and need to write
-					//std::cout << "Reached end of input ending a negative run" << std::endl;
-					m_Data[m_Size] = (T)runSize;
-					m_Size++;
-					m_Data[m_Size] = (T)(*temp);
-					m_Size++;
+					WritePositiveData(runSize, (*temp));
 				}
 			}
-			else { // continuing the negative run
-				//std::cout << "NO MATCH " << (*temp) << " " << (*(temp + 1)) << std::endl;
+			// continuing the negative run
+			else 
+			{ 
 				runSize++;
 
-				if (runSize == maxRunSize){ // need to record run before exceeding maxRunSize
-					if ((*(temp + 1)) == (*(temp + 2))){ // negative run is ending soon, and our runSize is too long
-						//std::cout << "BACKTRACKING because maxRunSize reached and negative run ending" << std::endl;
+				// need to record run before exceeding maxRunSize
+				if (runSize == maxRunSize)
+				{ 
+					// negative run is ending soon, and our runSize is too long
+					if ((*(temp + 1)) == (*(temp + 2)))
+					{ 
 						runSize--;
 						m_Data[m_Size] = (T)((-1)*runSize);
 						m_Size++;
-						for (int backtrack = runSize; backtrack > 0; backtrack--){
+						for (int backtrack = runSize; backtrack > 0; backtrack--)
+						{
 							m_Data[m_Size] = (T)(*(temp - backtrack));
 							m_Size++;
 						}
 					}
-					else { // negative run is going to continue a little longer
-						//std::cout << "BACKTRACKING because maxRunSize reached" << std::endl;
+					// negative run is going to continue a little longer
+					else 
+					{ 
 						m_Data[m_Size] = (T)((-1)*runSize);
 						m_Size++;
-						for (int backtrack = runSize; backtrack > 0; backtrack--){
+						for (int backtrack = runSize; backtrack > 0; backtrack--)
+						{
 							m_Data[m_Size] = (T)(*(temp - backtrack));
 							m_Size++;
 						}
@@ -152,11 +158,13 @@ void RLE<T>::Compress(const T* input, int inSize)
 					runSize = 1;
 				}
 
-				if (character == (inSize - 1)){ // reached the end of the input and need to write
-					//std::cout << "Reached end of input on a negative run" << std::endl;
+				// reached the end of the input and need to write
+				if (character == (inSize - 1))
+				{ 
 					m_Data[m_Size] = (T)((-1)*runSize);
 					m_Size++;
-					for (int backtrack = runSize; backtrack > 0; backtrack--){
+					for (int backtrack = (runSize - 2); backtrack > (-2); backtrack--)
+					{
 						m_Data[m_Size] = (T)(*(temp - backtrack));
 						m_Size++;
 					}
@@ -178,29 +186,37 @@ void RLE<T>::Decompress(const T* input, int inSize, int outSize)
 	int runSize;
 	bool positiveRun;
 
-	while (m_Size < outSize){
-		if ((*runStart) > 0){
+	while (runStart < (input + inSize)) 
+	{
+		// beginning a positive run
+		if ((*runStart) > 0)
+		{ 
 			positiveRun = true;
-			runSize = *runStart;
+			runSize = (*runStart);
 		}
-		else {
+		// beginning a negative run
+		else 
+		{
 			positiveRun = false;
 			runSize = (-1)*(*runStart);
 		}
-		for (int i = 0; i < runSize; i++){
+		for (int i = 0; i < runSize; i++)
+		{ 
 			m_Data[m_Size] = *runTrack;
 			m_Size++;
-			if (!positiveRun){
+
+			// if in a negative run, increment the pointer to the next character
+			if (!positiveRun)
+			{
 				++runTrack;
 			}
-			//std::cout << "PRINT " << m_Data[m_Size - 1] << std::endl;
 		}
-		if (positiveRun){
+		// if we just finished a positive run, we need to increment the pointer to the beginning of the next run
+		if (positiveRun)
+		{ 
 			++runTrack;
 		}
-		runStart = runTrack;
-		++runTrack;
-		//std::cout << "RUNTRACK " << (*runStart) << " " << (*runTrack) << std::endl;
+		runStart = runTrack; // reset the start of the run
+		++runTrack; // reset the pointer to the first character
 	}
-
 }

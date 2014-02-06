@@ -20,6 +20,10 @@ public:
 	void CreateArchive(const std::string& source);
 
 	void ExtractArchive(const std::string& source);
+
+	void SetSignature();
+
+	void WriteDataToArchive(std::string filename);
 };
 
 // RLE v2 archive supports compressing all the files a
@@ -49,4 +53,9 @@ public:
 	void CreateArchive(const std::string& source);
 
 	void ExtractArchive(const std::string& source);
+
+	void SetSignature();
+
+	void WriteDataToArchive(std::string filename);
+
 };
